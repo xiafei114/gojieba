@@ -175,6 +175,15 @@ func TestJiebaCutForSearch(t *testing.T) {
 	}
 }
 
+func BenchmarkNewJiebaMemLeak(b *testing.B) {
+	b.ResetTimer()
+	//equals with x := NewJieba(DICT_PATH, HMM_PATH, USER_DICT_PATH)
+	x := NewJieba()
+	defer x.Free()
+	// Stop Timer before x.Free()
+	defer b.StopTimer()
+}
+
 func BenchmarkJieba(b *testing.B) {
 	//equals with x := NewJieba(DICT_PATH, HMM_PATH, USER_DICT_PATH)
 	x := NewJieba()
