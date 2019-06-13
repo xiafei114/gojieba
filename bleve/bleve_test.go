@@ -3,7 +3,11 @@ package bleve
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"runtime"
+	"runtime/pprof"
+	"testing"
 
 	"github.com/blevesearch/bleve"
 	"github.com/yanyiwu/gojieba"
@@ -84,10 +88,42 @@ func Example() {
 		fmt.Println(prettify(res))
 	}
 
+	//cleanup cgo allocated heap memory
+	if jieba, ok := (index.Mapping().AnalyzerNamed("gojieba").Tokenizer).(*JiebaTokenizer); !ok {
+		panic("jieba.Free() failed")
+	} else {
+		jieba.Free()
+	}
+	index.Close()
 	// Output:
 	// [{"id":"1","score":0.27650412875470115}]
 	// [{"id":"2","score":0.27650412875470115}]
 	// [{"id":"3","score":0.7027325540540822}]
+}
+
+func BenchmarkExample(b *testing.B) {
+	// CPU Profile
+	cpuProfile, err := os.Create("cpu.prof")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(cpuProfile)
+	defer pprof.StopCPUProfile()
+
+	for i := 0; i < 300; i++ {
+		Example()
+	}
+
+	// Memory Profile
+	f, err := os.Create("mem.prof")
+	if err != nil {
+		log.Fatal("could not create memory profile: ", err)
+	}
+	defer f.Close()
+	runtime.GC() // get up-to-date statistics
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		log.Fatal("could not write memory profile: ", err)
+	}
 }
 
 func prettify(res *bleve.SearchResult) string {
